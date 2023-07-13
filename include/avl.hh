@@ -39,7 +39,13 @@ class avl_tree_node {
     int right_child_depth() {
         return this->right_child ? this->right_child->depth : 0;
     }
+
+    string dump();
 };
+
+string avl_tree_node::dump() {
+    // 无向图
+}
 
 void avl_tree_node::right_rotate() {
     if (!this->left_child)
