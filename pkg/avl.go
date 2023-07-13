@@ -27,6 +27,13 @@ func (a *AVLNode) LeftRotate() {
 	b.LeftChild = a
 	a.Parent = b
 	b.Parent = parent
+	if parent != nil {
+		if a.Key > parent.Key {
+			parent.RightChild = b
+		} else {
+			parent.LeftChild = b
+		}
+	}
 
 	// b 原来的左子树变成 a 的右子树
 	a.RightChild = left
@@ -56,6 +63,13 @@ func (a *AVLNode) RightRotate() {
 	b.RightChild = a
 	a.Parent = b
 	b.Parent = parent
+	if parent != nil {
+		if a.Key > parent.Key {
+			parent.RightChild = b
+		} else {
+			parent.LeftChild = b
+		}
+	}
 
 	// b 原来的右子树变成 a 的左子树
 	a.LeftChild = right
