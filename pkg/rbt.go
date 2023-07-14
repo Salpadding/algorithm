@@ -2,6 +2,15 @@ package pkg
 
 type Cmp func(x, y interface{}) int
 
+// RBTree
+// 红黑树可以这样定义(简洁版):
+// 1. 红黑树是二叉排序树 根节点是黑节点 nil节点也是黑节点
+// 2. 红节点的父节点是黑节点
+// 3. 对于任意两个不同的 nil节点, 从nil节点到根节点的路径上出现的黑节点数量相同
+// 通过定义可以证明
+// 1. 红黑树中任意一个黑节点以及它的左右子树也构成红黑树
+// 2. 如果根节点是黑色 根节点的左右是红色 我把左右都染成黑色 这依然是一颗红黑树
+// 3. 红节点一定有父亲节点
 type RBTree struct {
 	compareFn func(x, y interface{}) int
 	root      *RBNode
@@ -50,6 +59,8 @@ func (n *RBNode) black() int {
 	return 1
 }
 
+// rightRotate 右旋
+// 向右移动节点同时保持二叉排序树的性质
 func (y *RBNode) rightRotate(cmp Cmp) {
 	x := y.L
 	if x == nil {
@@ -59,7 +70,7 @@ func (y *RBNode) rightRotate(cmp Cmp) {
 
 	x.P = y.P
 	if x.P != nil {
-		if cmp(y.Key, x.Key) < 0 {
+		if cmp(y.Key, x.P.Key) < 0 {
 			x.P.L = x
 		} else {
 			x.P.R = x
@@ -75,6 +86,8 @@ func (y *RBNode) rightRotate(cmp Cmp) {
 	}
 }
 
+// leftRotate 右旋
+// 向左移动节点同时保持二叉排序树的性质
 func (y *RBNode) leftRotate(cmp Cmp) {
 	x := y.R
 	if x == nil {
@@ -84,7 +97,7 @@ func (y *RBNode) leftRotate(cmp Cmp) {
 
 	x.P = y.P
 	if x.P != nil {
-		if cmp(y.Key, x.Key) < 0 {
+		if cmp(y.Key, x.P.Key) < 0 {
 			x.P.L = x
 		} else {
 			x.P.R = x
@@ -123,8 +136,7 @@ func (y *RBNode) Insert(key interface{}, value interface{}, cmp Cmp) (newRoot *R
 		return
 	}
 
-	leaf.fixup(&newRoot, cmp)
-	newRoot.Color = y.black()
+	leaf.insertFix(&newRoot, cmp)
 	return
 }
 
@@ -157,21 +169,126 @@ func (y *RBNode) insert(key interface{}, value interface{}, cmp Cmp) *RBNode {
 	return y.R.insert(key, value, cmp)
 }
 
-func (y *RBNode) fixup(root **RBNode, cmp Cmp) {
-	if y.P == nil || y.P.Color == y.black() {
+// simpleDelete 删除当前节点
+// 删除黑色节点可能会造成黑高度-1 需要进行平衡
+//
+// 首先要保证二叉排序树的性质
+// 1. 左右子树有且至少有一个是 nil  把那个比较高的左/右子树接到 parent 上面
+// 2. (一次递归) 左右子树都不是 nil 把前驱节点的数值移植到当前节点 转化成删前驱节点 前驱节点的右子树一定是nil 所以满足1
+//
+// 在满足1的条件下 继续保证红黑树的性质
+// case1. 删除的节点是红色 那么删除不会改变黑高度 不需要修复
+// case2. 删除节点是黑色 但是这个节点一边是 nil 一边是 红色 因为这个红色节点会接替删除的位置 只要把这个红色节点染黑就行了
+// case3. 删除节点的 uncle 节点是红色 把这个红色的节点移过来再染黑
+func (y *RBNode) delete(root **RBNode) {
+	// 左右均不为 nil
+	// 转化为删前驱
+	if y.L != nil && y.R != nil {
+		cur := y.L
+		for cur.R != nil {
+			cur = cur.R
+		}
+
+		y.Key = cur.Key
+		y.Value = cur.Value
+		cur.delete(root)
 		return
 	}
 
+	// 删除红色节点
+	if y.Color == y.red() {
+		if y.L != nil {
+			y.replaceBy(y.L)
+		} else {
+			y.replaceBy(y.R)
+		}
+		return
+	}
+
+	// 有红色左子
+	if y.L != nil && y.L.Color == y.red() {
+		y.replaceBy(y.L)
+		y.L.Color = y.black()
+		if y == *root {
+			*root = y.L
+		}
+		return
+	}
+
+	// 有红色右子
+	if y.R != nil && y.R.Color == y.red() {
+		y.replaceBy(y.R)
+		y.R.Color = y.black()
+		if y == *root {
+			*root = y.R
+		}
+		return
+	}
+
+	// 删的是黑节点 而且不是根节点
+	// 这种情况先不考虑
+	if y.P == nil {
+		panic("delete black child of root")
+	}
+
+	uncle := y.P.L
+	if y == uncle {
+		uncle = y.P.R
+	}
+
+	// uncle, uncle左, uncle右 = (黑,黑,黑)
+}
+
+func (x *RBNode) replaceBy(child *RBNode) {
+	child.P = x.P
+	if x.P != nil {
+		if x == x.P.L {
+			x.P.L = child
+		} else {
+			x.P.R = child
+		}
+	}
+}
+
+// insertFix 插入完成后修复红黑树
+// 红黑树插入后可能出现 红-红 的情况
+//
+// 如何修复?
+// case1. 如果另一条分支上是黑-黑 那么我们可以把红色节点移动到这两个黑色节点的中间
+// 为了在移动的同时保持二叉排序树的性质 我们会采用 旋转 + 染色的操作
+//
+// case2. 另一条分支上是黑-红
+// 我们 parent + uncle 从红的变成黑的 把 uncle 的 parent 从黑的变成红的
+// 这样这两条path的 黑高度都是不变的, 并且缩小了问题规模
+// 顺着往上递归 一定能
+// 1. 到达根节点 把根节点染黑 根节点黑高度 + 1 结束递归
+// 2. 遇到红-黑 结束递归
+// 3. 跳到 case1 结束递归
+func (y *RBNode) insertFix(root **RBNode, cmp Cmp) {
+	// y.P == nil 递归到根节点了 染黑
+	// 根节点 以及根节点左右都黑了 根节点黑高度+1
+	if y.P == nil {
+		y.Color = y.black()
+		return
+	}
+	// 红-黑
+	if y.P.Color == y.black() {
+		return
+	}
+
+	// 红-红
 	// 在左边
 	if cmp(y.P.Key, y.P.P.Key) < 0 {
 		uncle := y.P.P.R
+		// case2
 		if uncle != nil && uncle.Color == y.red() {
 			y.P.Color = y.black()
 			uncle.Color = y.black()
 			y.P.P.Color = y.red()
-			y.P.P.fixup(root, cmp)
+			y.P.P.insertFix(root, cmp)
 			return
 		}
+		// case1
 		grandpa := y.P.P
 		// LR -> LL
 		if cmp(y.Key, y.P.Key) > 0 {
@@ -187,12 +304,13 @@ func (y *RBNode) fixup(root **RBNode, cmp Cmp) {
 		return
 	}
 
+	// 在右边
 	uncle := y.P.P.L
 	if uncle != nil && uncle.Color == y.red() {
 		y.P.Color = y.black()
 		uncle.Color = y.black()
 		y.P.P.Color = y.red()
-		y.P.P.fixup(root, cmp)
+		y.P.P.insertFix(root, cmp)
 		return
 	}
 	grandpa := y.P.P
