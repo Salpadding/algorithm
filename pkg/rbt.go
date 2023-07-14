@@ -61,7 +61,7 @@ func (n *RBNode) black() int {
 
 // rightRotate 右旋
 // 向右移动节点同时保持二叉排序树的性质
-func (y *RBNode) rightRotate(cmp Cmp) {
+func (y *RBNode) rightRotate() {
 	x := y.L
 	if x == nil {
 		return
@@ -70,7 +70,7 @@ func (y *RBNode) rightRotate(cmp Cmp) {
 
 	x.P = y.P
 	if x.P != nil {
-		if cmp(y.Key, x.P.Key) < 0 {
+		if y == x.P.L {
 			x.P.L = x
 		} else {
 			x.P.R = x
@@ -88,7 +88,8 @@ func (y *RBNode) rightRotate(cmp Cmp) {
 
 // leftRotate 右旋
 // 向左移动节点同时保持二叉排序树的性质
-func (y *RBNode) leftRotate(cmp Cmp) {
+// 如果对一个红节点左旋 不会改变黑高度
+func (y *RBNode) leftRotate() {
 	x := y.R
 	if x == nil {
 		return
@@ -97,7 +98,7 @@ func (y *RBNode) leftRotate(cmp Cmp) {
 
 	x.P = y.P
 	if x.P != nil {
-		if cmp(y.Key, x.P.Key) < 0 {
+		if y == x.P.L {
 			x.P.L = x
 		} else {
 			x.P.R = x
@@ -136,7 +137,7 @@ func (y *RBNode) Insert(key interface{}, value interface{}, cmp Cmp) (newRoot *R
 		return
 	}
 
-	leaf.insertFix(&newRoot, cmp)
+	leaf.insertFix(&newRoot)
 	return
 }
 
@@ -196,6 +197,7 @@ func (y *RBNode) delete(root **RBNode) {
 	}
 
 	// 删除红色节点
+	// 不会出现红-红
 	if y.Color == y.red() {
 		if y.L != nil {
 			y.replaceBy(y.L)
@@ -206,6 +208,7 @@ func (y *RBNode) delete(root **RBNode) {
 	}
 
 	// 有红色左子
+	// 染黑后 不可能出现红-红
 	if y.L != nil && y.L.Color == y.red() {
 		y.replaceBy(y.L)
 		y.L.Color = y.black()
@@ -216,6 +219,7 @@ func (y *RBNode) delete(root **RBNode) {
 	}
 
 	// 有红色右子
+	// 染黑后 不可能出现红-红
 	if y.R != nil && y.R.Color == y.red() {
 		y.replaceBy(y.R)
 		y.R.Color = y.black()
@@ -236,7 +240,10 @@ func (y *RBNode) delete(root **RBNode) {
 		uncle = y.P.R
 	}
 
-	// uncle, uncle左, uncle右 = (黑,黑,黑)
+	// 下面讨论 uncle, uncle左, uncle右 = ()
+
+	//  (黑,红,黑) (黑,红,红) (黑,黑,红)
+
 }
 
 func (x *RBNode) replaceBy(child *RBNode) {
@@ -264,7 +271,7 @@ func (x *RBNode) replaceBy(child *RBNode) {
 // 1. 到达根节点 把根节点染黑 根节点黑高度 + 1 结束递归
 // 2. 遇到红-黑 结束递归
 // 3. 跳到 case1 结束递归
-func (y *RBNode) insertFix(root **RBNode, cmp Cmp) {
+func (y *RBNode) insertFix(root **RBNode) {
 	// y.P == nil 递归到根节点了 染黑
 	// 根节点 以及根节点左右都黑了 根节点黑高度+1
 	if y.P == nil {
@@ -278,27 +285,27 @@ func (y *RBNode) insertFix(root **RBNode, cmp Cmp) {
 
 	// 红-红
 	// 在左边
-	if cmp(y.P.Key, y.P.P.Key) < 0 {
+	if y.P == y.P.P.L {
 		uncle := y.P.P.R
 		// case2
 		if uncle != nil && uncle.Color == y.red() {
 			y.P.Color = y.black()
 			uncle.Color = y.black()
 			y.P.P.Color = y.red()
-			y.P.P.insertFix(root, cmp)
+			y.P.P.insertFix(root)
 			return
 		}
 		// case1
 		grandpa := y.P.P
 		// LR -> LL
-		if cmp(y.Key, y.P.Key) > 0 {
-			y.P.leftRotate(cmp)
+		if y == y.P.R {
+			y.P.leftRotate()
 		}
 
 		if *root == grandpa {
 			*root = grandpa.L
 		}
-		grandpa.rightRotate(cmp)
+		grandpa.rightRotate()
 		grandpa.Color = y.red()
 		grandpa.P.Color = y.black()
 		return
@@ -310,19 +317,19 @@ func (y *RBNode) insertFix(root **RBNode, cmp Cmp) {
 		y.P.Color = y.black()
 		uncle.Color = y.black()
 		y.P.P.Color = y.red()
-		y.P.P.insertFix(root, cmp)
+		y.P.P.insertFix(root)
 		return
 	}
 	grandpa := y.P.P
 	// RL -> RR
-	if cmp(y.Key, y.P.Key) < 0 {
-		y.P.rightRotate(cmp)
+	if y == y.P.L {
+		y.P.rightRotate()
 	}
 
 	if *root == grandpa {
 		*root = grandpa.R
 	}
-	grandpa.leftRotate(cmp)
+	grandpa.leftRotate()
 	grandpa.Color = y.red()
 	grandpa.P.Color = y.black()
 }
