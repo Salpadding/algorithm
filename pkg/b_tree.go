@@ -4,9 +4,16 @@ const (
 	TreeOrder = 5
 )
 
+// BTree B树 TreeOrder=3时是2-3树
+// 2-3 树的性质
+// 1. 以顺序方式插入 2^k-1个节点 结果是一个满二叉树
 type BTree struct {
 	root *BNode
 	cmp  Cmp
+}
+
+func (b *BNode) minKeys() int {
+	return (TreeOrder+1)/2 - 1
 }
 
 func (b *BTree) Insert(key interface{}) {
@@ -45,7 +52,7 @@ func (b *BNode) addKey(key interface{}, idx int, cmp Cmp) int {
 		}
 		b.Children[idx] = nil
 	}
-	for i := len(b.Keys) - 1; i >= idx+1; i-- {
+	for i := b.Len - 1; i >= idx+1; i-- {
 		// 往右移动
 		b.Keys[i] = b.Keys[i-1]
 	}
@@ -88,17 +95,42 @@ func (b *BNode) New() *BNode {
 	}
 }
 
+func (b *BNode) delete(root **RBNode, idx int) {
+	if b.Children[idx] != nil {
+		cur := b.Children[idx]
+		// 找前驱 转化为删除前驱
+		for cur.Children[cur.Len] != nil {
+			cur = cur.Children[cur.Len]
+		}
+		b.Keys[idx] = cur.Keys[cur.Len-1]
+		cur.delete(root, cur.Len-1)
+		return
+	}
+}
+
+// split 分裂
+// b 树保持性质的核心操作
 func (b *BNode) split(parent *BNode, cmp Cmp) {
 	idx := parent.addKey(b.Keys[TreeOrder/2], -1, cmp)
 	left := b.New()
 	left.Len = TreeOrder / 2
 	copy(left.Keys[:left.Len], b.Keys[:left.Len])
 	copy(left.Children[:TreeOrder/2+1], b.Children[:TreeOrder/2+1])
+	for i := range left.Children[:TreeOrder/2+1] {
+		if left.Children[i] != nil {
+			left.Children[i].Parent = left
+		}
+	}
 
 	right := b.New()
 	right.Len = TreeOrder - left.Len - 1
 	copy(right.Keys[:right.Len], b.Keys[left.Len+1:TreeOrder])
 	copy(right.Children[:right.Len+1], b.Children[left.Len+1:])
+	for i := range right.Children[:TreeOrder/2+1] {
+		if right.Children[i] != nil {
+			right.Children[i].Parent = right
+		}
+	}
 
 	left.Parent = parent
 	right.Parent = parent

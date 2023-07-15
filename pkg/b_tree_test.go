@@ -15,6 +15,9 @@ func TestBTree(t *testing.T) {
 
 	var i int
 	for i = 0; i < 10240; i++ {
+		if i == 8 {
+			fmt.Println()
+		}
 		btree.Insert(i)
 	}
 
