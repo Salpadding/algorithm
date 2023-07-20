@@ -129,7 +129,8 @@ struct rb_node *find(struct rb_node *node, int key, struct rb_node **last) {
             return node;
         if (key < node->key)
             node = node->left;
-        node = node->right;
+        else
+            node = node->right;
     }
     return node;
 }
@@ -265,9 +266,9 @@ void delete_node(struct rb_node *n, struct rb_node **root) {
         return;                                                                \
     }                                                                          \
     if (p == p->parent->left)                                                  \
-        x = &p->left;                                                          \
+        x = &p->parent->left;                                                  \
     else                                                                       \
-        x = &p->right;                                                         \
+        x = &p->parent->right;                                                 \
     p = p->parent;                                                             \
     goto fix_up;
 
@@ -424,7 +425,7 @@ int main() {
     for (i = 0; i < N; i++) {
         insert(&root, i, i);
     }
-    for (i = N - 1; i >= 0; i--) {
+    for (i = 0; i < N; i++) {
         delete (i, &root);
         print_tree(root);
         fflush(stdout);
