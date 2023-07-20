@@ -15,53 +15,37 @@ struct rb_node {
 
 void print_tree(struct rb_node *root);
 
+#define __rotate(DIR1, DIR2) {\
+    if (!node->DIR2) \
+        return; \
+    struct rb_node *y = node->DIR2; \
+    y->parent = node->parent; \
+    if (node->parent) { \
+        if (node == node->parent->left) { \
+            y->parent->left = y; \
+        } else { \
+            y->parent->right = y; \
+        } \
+    } else { \
+        *root = y; \
+    } \
+    struct rb_node *yl = y->DIR1; \
+    node->parent = y; \
+    y->DIR1 = node; \
+    node->DIR2 = yl; \
+    if (yl) { \
+        yl->parent = node; \
+    } \
+}
+
 // 左旋
 void rotate_left(struct rb_node *node, struct rb_node **root) {
-    if (!node->right)
-        return;
-    struct rb_node *y = node->right;
-    y->parent = node->parent;
-    if (node->parent) {
-        if (node == node->parent->left) {
-            y->parent->left = y;
-        } else {
-            y->parent->right = y;
-        }
-    } else {
-        *root = y;
-    }
-    struct rb_node *yl = y->left;
-    node->parent = y;
-    y->left = node;
-    node->right = yl;
-    if (yl) {
-        yl->parent = node;
-    }
+    __rotate(left, right)
 }
 
 // 右旋
 void rotate_right(struct rb_node *node, struct rb_node **root) {
-    if (!node->left)
-        return;
-    struct rb_node *y = node->left;
-    y->parent = node->parent;
-    if (node->parent) {
-        if (node == node->parent->left) {
-            y->parent->left = y;
-        } else {
-            y->parent->right = y;
-        }
-    } else {
-        *root = y;
-    }
-
-    struct rb_node *yr = y->right;
-    node->parent = y;
-    y->right = node;
-    node->left = yr;
-    if (yr) {
-        yr->parent = node;
-    }
+    __rotate(right, left)
 }
 
 // 插入操作后 修复红黑树
