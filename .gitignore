@@ -1,3 +1,6 @@
 .ccls-cache
 *.o
 .idea
+*.dot
+*.jpg
+*.i

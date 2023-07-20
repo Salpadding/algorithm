@@ -1,5 +1,6 @@
 CXX=g++
 CXXFLAGS=-g -Wall -std=c++11 -Iinclude
+CFLAGS += -Wall -Iinclude
 
 %.o: %.cc
 	@$(CXX) $(CXXFLAGS) -o $@ $^
@@ -7,6 +8,11 @@ CXXFLAGS=-g -Wall -std=c++11 -Iinclude
 %.run: %.cc
 	@rm -f $*.o
 	@$(CXX) $(CXXFLAGS) -o $*.o $^
+	@./$*.o
+
+%.run: %.c
+	@rm -f $*.o
+	@$(CC) $(CFLAGS) -o $*.o $^
 	@./$*.o
 
 all: avl.o
