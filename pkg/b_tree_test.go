@@ -23,3 +23,17 @@ func TestBTree(t *testing.T) {
 
 	fmt.Println()
 }
+
+func TestFindSlot(t *testing.T) {
+	node := &BNode{
+		Keys: []interface{}{
+			1,
+		},
+		Len: 1,
+	}
+
+	cmp := func(x, y interface{}) int {
+		return x.(int) - y.(int)
+	}
+	fmt.Printf("%d\n", node.findSlot(2, cmp))
+}

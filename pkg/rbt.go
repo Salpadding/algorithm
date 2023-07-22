@@ -170,7 +170,7 @@ func (y *RBNode) insert(key interface{}, value interface{}, cmp Cmp) *RBNode {
 	return y.R.insert(key, value, cmp)
 }
 
-// simpleDelete 删除当前节点
+// delete 删除当前节点
 // 删除黑色节点可能会造成黑高度-1 需要进行平衡
 //
 // 首先要保证二叉排序树的性质
@@ -229,21 +229,86 @@ func (y *RBNode) delete(root **RBNode) {
 		return
 	}
 
-	// 删的是黑节点 而且不是根节点
-	// 这种情况先不考虑
+	// 删除的是根节点
 	if y.P == nil {
-		panic("delete black child of root")
+		*root = nil
+		return
 	}
 
-	uncle := y.P.L
-	if y == uncle {
-		uncle = y.P.R
+	w := y
+	if y == y.P.L {
+		y.P.L = nil
 	}
 
-	// 下面讨论 uncle, uncle左, uncle右 = ()
+	if w == w.P.L {
+		// uncle red -> uncle black
+		if w.P.R != nil && w.P.R.Color == y.red() {
+			w.P.R.Color = y.black()
+			w.P.Color = y.red()
+			w.P.leftRotate()
+			w = w.L
+		}
 
-	//  (黑,红,黑) (黑,红,红) (黑,黑,红)
+	RR:
+		// uncle has red child
+		if w.P.R != nil && w.P.R.R != nil && w.R.R.R.Color == y.red() {
+			w.P.leftRotate()
+			w.P.P.Color = w.P.Color
+			w.P.Color = y.black()
+			w.P.P.R.Color = y.black()
+		}
 
+		if w.P.R != nil && w.R.R.L != nil && w.R.R.L.Color == y.red() {
+			w.P.R.leftRotate()
+			w.P.R.Color = y.black()
+			w.P.R.Color = y.red()
+			goto RR
+		}
+
+		// no red child
+		if w.P.Color == y.red() {
+			w.P.Color = y.black()
+			w.P.R.Color = y.red()
+		}
+	}
+}
+
+func (x *RBNode) fixDelete(parent, uncle *RBNode) {
+	if uncle == parent.R {
+		if uncle != nil && uncle.Color == x.red() {
+			parent.rightRotate()
+			uncle = uncle.L
+		}
+	} else {
+
+	}
+
+	// uncle 是红色 转化为 黑色
+	if uncle != nil && uncle.Color == x.red() {
+		uncle.Color = x.black()
+		parent.Color = x.red()
+		if uncle == parent.L {
+			parent.rightRotate()
+			uncle = uncle.L
+		} else {
+			parent.leftRotate()
+			uncle = uncle.R
+		}
+		parent = uncle
+	}
+
+	// uncle 有红色 child
+	if uncle != nil {
+		if uncle == parent.L {
+			if uncle.L != nil && uncle.L.Color == x.red() {
+
+			}
+		} else {
+			if uncle.R != nil && uncle.R.Color == x.red() {
+
+			}
+		}
+	}
 }
 
 func (x *RBNode) replaceBy(child *RBNode) {
